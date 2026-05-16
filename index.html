@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Курсы валют · ЦБ РФ</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3e;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --accent: #6366f1;
+      --accent-dim: rgba(99, 102, 241, 0.12);
+      --green: #22c55e;
+      --green-dim: rgba(34, 197, 94, 0.12);
+      --red: #ef4444;
+      --red-dim: rgba(239, 68, 68, 0.12);
+      --yellow: #eab308;
+      --yellow-dim: rgba(234, 179, 8, 0.12);
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 16px 60px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+    }
+
+    header {
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      margin-right: 6px;
+      position: relative;
+      top: -1px;
+    }
+
+    .dot.live {
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    select, input[type="number"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+      cursor: pointer;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--accent);
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 11px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    button:hover { opacity: 0.88; }
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Result card */
+    .result {
+      display: none;
+    }
+
+    .result.visible {
+      display: block;
+    }
+
+    .rate-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .currency-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .flag {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .currency-info .code {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .currency-info .name {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .rate-value {
+      text-align: right;
+    }
+
+    .rate-value .current {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .rate-value .updated {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+
+    .alert-box {
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .alert-box.above {
+      background: var(--red-dim);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    .alert-box.below {
+      background: var(--green-dim);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+    }
+
+    .alert-box.equal {
+      background: var(--yellow-dim);
+      border: 1px solid rgba(234, 179, 8, 0.25);
+    }
+
+    .alert-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .alert-text .alert-title {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .alert-text .alert-title.above { color: var(--red); }
+    .alert-text .alert-title.below { color: var(--green); }
+    .alert-text .alert-title.equal { color: var(--yellow); }
+
+    .alert-text .alert-detail {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .stat-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+    }
+
+    .stat-box .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-box .stat-val {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .stat-val.positive { color: var(--green); }
+    .stat-val.negative { color: var(--red); }
+    .stat-val.neutral { color: var(--yellow); }
+
+    /* History */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      transition: border-color 0.2s;
+    }
+
+    .history-item:hover {
+      border-color: var(--accent);
+    }
+
+    .history-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .history-flag { font-size: 16px; }
+
+    .history-meta .h-code {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .history-meta .h-time {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .history-right {
+      text-align: right;
+    }
+
+    .history-rate {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .history-diff {
+      font-size: 11px;
+      margin-top: 1px;
+    }
+
+    .history-diff.pos { color: var(--green); }
+    .history-diff.neg { color: var(--red); }
+    .history-diff.zero { color: var(--yellow); }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.above { background: var(--red); }
+    .status-dot.below { background: var(--green); }
+    .status-dot.equal { background: var(--yellow); }
+
+    .empty-history {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 20px 0;
+    }
+
+    .error-msg {
+      background: var(--red-dim);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: var(--radius-sm);
+      color: var(--red);
+      font-size: 13px;
+      padding: 12px 14px;
+      margin-top: 12px;
+      display: none;
+    }
+
+    .error-msg.visible { display: block; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1><span class="dot" id="statusDot"></span>Курсы валют</h1>
+    <p>Данные ЦБ РФ · daily_json</p>
+  </header>
+
+  <!-- Controls -->
+  <div class="card">
+    <div class="card-title">Мониторинг</div>
+    <div class="controls">
+      <div>
+        <label for="currencySelect">Валюта</label>
+        <select id="currencySelect">
+          <option value="USD">🇺🇸 USD — Доллар</option>
+          <option value="EUR">🇪🇺 EUR — Евро</option>
+          <option value="CNY">🇨🇳 CNY — Юань</option>
+        </select>
+      </div>
+      <div>
+        <label for="thresholdInput">Пороговый курс (₽)</label>
+        <input type="number" id="thresholdInput" placeholder="напр. 90.00" step="0.01" min="0">
+      </div>
+    </div>
+    <button id="fetchBtn" onclick="fetchRate()">Проверить курс</button>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <!-- Result -->
+  <div class="card result" id="resultCard">
+    <div class="card-title">Текущий курс</div>
+    <div class="rate-row">
+      <div class="currency-badge">
+        <div class="flag" id="rFlag"></div>
+        <div class="currency-info">
+          <div class="code" id="rCode"></div>
+          <div class="name" id="rName"></div>
+        </div>
+      </div>
+      <div class="rate-value">
+        <div class="current" id="rRate"></div>
+        <div class="updated" id="rDate"></div>
+      </div>
+    </div>
+
+    <div id="alertSection"></div>
+
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">Порог</div>
+        <div class="stat-val" id="sThreshold">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Отклонение</div>
+        <div class="stat-val" id="sDiff">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="card">
+    <div class="card-title">История запросов</div>
+    <div class="history-list" id="historyList">
+      <div class="empty-history">Нет запросов</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const currencies = {
+    USD: { name: 'Доллар США', flag: '🇺🇸' },
+    EUR: { name: 'Евро',       flag: '🇪🇺' },
+    CNY: { name: 'Юань',       flag: '🇨🇳' },
+  };
+
+  let history = [];
+
+  function fmt(n) {
+    return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function fmtSign(n) {
+    const s = fmt(Math.abs(n));
+    return n > 0 ? `+${s}` : n < 0 ? `−${s}` : `±${s}`;
+  }
+
+  async function fetchRate() {
+    const code = document.getElementById('currencySelect').value;
+    const rawThreshold = document.getElementById('thresholdInput').value.trim();
+    const threshold = rawThreshold !== '' ? parseFloat(rawThreshold) : null;
+
+    const btn = document.getElementById('fetchBtn');
+    const errEl = document.getElementById('errorMsg');
+    errEl.classList.remove('visible');
+
+    if (threshold !== null && (isNaN(threshold) || threshold <= 0)) {
+      showError('Введите корректный пороговый курс (число больше 0).');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Загрузка…';
+
+    try {
+      const res = await fetch('https://www.cbr-xml-daily.ru/daily_json.js');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      const cur = data.Valute[code];
+      if (!cur) throw new Error(`Валюта ${code} не найдена в ответе ЦБ`);
+
+      const rate = cur.Value / cur.Nominal;
+      const dateStr = new Date(data.Date).toLocaleString('ru-RU', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+
+      renderResult(code, rate, threshold, dateStr);
+      addHistory(code, rate, threshold, dateStr);
+
+      document.getElementById('statusDot').classList.add('live');
+    } catch (e) {
+      showError('Не удалось получить данные: ' + e.message);
+      document.getElementById('statusDot').classList.remove('live');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Проверить курс';
+    }
+  }
+
+  function renderResult(code, rate, threshold, dateStr) {
+    const meta = currencies[code];
+    document.getElementById('rFlag').textContent = meta.flag;
+    document.getElementById('rCode').textContent = code;
+    document.getElementById('rName').textContent = meta.name;
+    document.getElementById('rRate').textContent = fmt(rate) + ' ₽';
+    document.getElementById('rDate').textContent = 'Обновлено: ' + dateStr;
+
+    let alertHtml = '';
+    if (threshold !== null) {
+      const diff = rate - threshold;
+      const absDiff = fmt(Math.abs(diff));
+
+      let statusClass, icon, title, detail;
+      if (diff > 0.001) {
+        statusClass = 'above';
+        icon = '🔴';
+        title = 'Курс выше порога';
+        detail = `Превышение на ${absDiff} ₽ (порог: ${fmt(threshold)} ₽)`;
+      } else if (diff < -0.001) {
+        statusClass = 'below';
+        icon = '🟢';
+        title = 'Курс ниже порога';
+        detail = `Отставание на ${absDiff} ₽ (порог: ${fmt(threshold)} ₽)`;
+      } else {
+        statusClass = 'equal';
+        icon = '🟡';
+        title = 'Курс равен порогу';
+        detail = `Точное совпадение с пороговым значением`;
+      }
+
+      alertHtml = `
+        <div class="divider"></div>
+        <div class="alert-box ${statusClass}">
+          <div class="alert-icon">${icon}</div>
+          <div class="alert-text">
+            <div class="alert-title ${statusClass}">${title}</div>
+            <div class="alert-detail">${detail}</div>
+          </div>
+        </div>`;
+
+      document.getElementById('sThreshold').textContent = fmt(threshold) + ' ₽';
+      const diffEl = document.getElementById('sDiff');
+      diffEl.textContent = fmtSign(diff) + ' ₽';
+      diffEl.className = 'stat-val ' + (diff > 0.001 ? 'negative' : diff < -0.001 ? 'positive' : 'neutral');
+    } else {
+      document.getElementById('sThreshold').textContent = 'не задан';
+      document.getElementById('sDiff').textContent = '—';
+      document.getElementById('sDiff').className = 'stat-val';
+    }
+
+    document.getElementById('alertSection').innerHTML = alertHtml;
+    document.getElementById('resultCard').classList.add('visible');
+  }
+
+  function addHistory(code, rate, threshold, dateStr) {
+    const meta = currencies[code];
+    const diff = threshold !== null ? rate - threshold : null;
+    let statusClass = 'equal';
+    if (diff !== null) {
+      if (diff > 0.001) statusClass = 'above';
+      else if (diff < -0.001) statusClass = 'below';
+    }
+
+    history.unshift({ code, rate, threshold, diff, dateStr, flag: meta.flag, statusClass });
+    if (history.length > 5) history.pop();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const el = document.getElementById('historyList');
+    if (history.length === 0) {
+      el.innerHTML = '<div class="empty-history">Нет запросов</div>';
+      return;
+    }
+
+    el.innerHTML = history.map(h => {
+      const diffHtml = h.diff !== null
+        ? `<div class="history-diff ${h.diff > 0.001 ? 'neg' : h.diff < -0.001 ? 'pos' : 'zero'}">${fmtSign(h.diff)} ₽ от порога</div>`
+        : `<div class="history-diff zero">порог не задан</div>`;
+
+      return `
+        <div class="history-item">
+          <div class="history-left">
+            <div class="status-dot ${h.statusClass}"></div>
+            <div class="history-flag">${h.flag}</div>
+            <div class="history-meta">
+              <div class="h-code">${h.code}</div>
+              <div class="h-time">${h.dateStr}</div>
+            </div>
+          </div>
+          <div class="history-right">
+            <div class="history-rate">${fmt(h.rate)} ₽</div>
+            ${diffHtml}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+
+  document.getElementById('thresholdInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') fetchRate();
+  });
+</script>
+</body>
+</html>
